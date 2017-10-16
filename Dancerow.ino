@@ -43,6 +43,8 @@ uint8_t perfect = 0, good = 0, bad = 0, miss = 0;
 void setup() {
   // initiate arduboy instance
   arduboy.begin();
+  
+  // Serial.begin(9600);
 
   arduboy.setFrameRate(DEFAULT_FRAME_RATE);
   arduboy.initRandomSeed();
@@ -90,6 +92,8 @@ void loop() {
       setting();
       break;
   }
+
+  // Serial.write(arduboy.getBuffer(), 128 * 64 / 8);
 
   // then we finaly we tell the arduboy to display what we just wrote to the display
   arduboy.display();
