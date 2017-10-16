@@ -1,16 +1,3 @@
-/*
-Hello, World! example
-June 11, 2015
-Copyright (C) 2015 David Martinez
-All rights reserved.
-This code is the most basic barebones code for writing a program for Arduboy.
-
-This library is free software; you can redistribute it and/or
-modify it under the terms of the GNU Lesser General Public
-License as published by the Free Software Foundation; either
-version 2.1 of the License, or (at your option) any later version.
-*/
-
 #include <Arduboy2.h>
 
 #include "Enums.h"
@@ -31,6 +18,7 @@ uint8_t frame = 0;
 // Main menu global variables
 uint8_t main_menu_animation_key_frame = 0;
 uint8_t main_menu_index = 0;
+uint8_t select_frame_rate = DEFAULT_FRAME_RATE;
 
 // Dance scene global variables
 uint8_t current_level = 1;
@@ -54,10 +42,9 @@ uint8_t perfect = 0, good = 0, bad = 0, miss = 0;
 // use it for anything that needs to be set only once in your game.
 void setup() {
   // initiate arduboy instance
-  arduboy.boot();
+  arduboy.begin();
 
-  // We aim 120 BPM 
-  arduboy.setFrameRate(24);
+  arduboy.setFrameRate(DEFAULT_FRAME_RATE);
   arduboy.initRandomSeed();
 }
 
@@ -98,10 +85,62 @@ void loop() {
     case GAME_OVER:
       game_over();
       break;
+
+    case SETTING:
+      setting();
+      break;
   }
 
   // then we finaly we tell the arduboy to display what we just wrote to the display
   arduboy.display();
+}
+
+//==================================================================================================//
+//                                          SETTING
+//==================================================================================================//
+
+void draw_setting_menu() {
+  arduboy.setCursor(5, 20);
+  arduboy.print("Speed");
+
+  arduboy.setCursor(15, 30);
+  arduboy.print(select_frame_rate);
+
+  arduboy.drawBitmap(0, 30, left_indicator, 8, 8, WHITE);
+  arduboy.drawBitmap(31, 30, right_indicator, 8, 8, WHITE);
+
+  if (arduboy.justPressed(LEFT_BUTTON)) {
+    select_frame_rate -= 4;
+    if (select_frame_rate < 20)
+      select_frame_rate = 36;
+  }
+
+  if (arduboy.justPressed(RIGHT_BUTTON)) {
+    select_frame_rate += 4;
+    if (select_frame_rate > 36)
+      select_frame_rate = 20;
+  }
+
+  if (arduboy.justPressed(A_BUTTON)) {
+    init_dance_scene();
+    game_scene = DANCE_SCENE;
+    arduboy.setFrameRate(select_frame_rate);
+  }
+
+  if (arduboy.justPressed(B_BUTTON)) {
+    game_scene = MAIN_MENU;
+  }
+}
+
+void setting() {
+  main_menu_animation_key_frame += (frame % 16 == 0) ? 1 : 0;
+
+  if (main_menu_animation_key_frame % 2 == 0)
+    arduboy.drawBitmap(0, 0, main_title_1, 128, 64, WHITE);
+  else
+    arduboy.drawBitmap(0, 0, main_title_2, 128, 64, WHITE);
+
+  draw_setting_menu();
 }
 
 //==================================================================================================//
@@ -132,7 +171,7 @@ void help() {
   arduboy.print("Type the arrow!");
 
   arduboy.setCursor(5, 37);
-  arduboy.print("Press (B) on");
+  arduboy.print("Press (A)/(B) on");
   arduboy.setCursor(5, 45);
   arduboy.print("the correct beat!");
 
@@ -177,7 +216,7 @@ void game_over() {
   arduboy.print("P: ");
   arduboy.print(perfect);
   
-  if (arduboy.justPressed(B_BUTTON)) {
+  if (arduboy.justPressed(B_BUTTON) || arduboy.justPressed(A_BUTTON)) {
     game_scene = MAIN_MENU;
   }
 }
@@ -189,18 +228,20 @@ void game_over() {
 void draw_main_menu() {
   arduboy.setCursor(0, 20);
   if (main_menu_index == 0)
-    arduboy.print("-Play");
+    arduboy.print(" Play");
   else arduboy.print("Play");
 
   arduboy.setCursor(0, 30);
   if (main_menu_index == 1)
-    arduboy.print("-Help");
+    arduboy.print(" Help");
   else arduboy.print("Help");
 
   arduboy.setCursor(0, 40);
   if (main_menu_index == 2)
-    arduboy.print("-Credit");
+    arduboy.print(" Credit");
   else arduboy.print("Credit");
+
+  arduboy.drawBitmap(-2, 20 + (main_menu_index * 10) - 1, right_indicator, 8, 8, WHITE);
 }
 
 void main_menu() {
@@ -219,10 +260,9 @@ void main_menu() {
   if (arduboy.justPressed(DOWN_BUTTON))
     main_menu_index = (main_menu_index + 1) % 3;
 
-  if (arduboy.justPressed(B_BUTTON)) {
+  if (arduboy.justPressed(A_BUTTON)) {
     if (main_menu_index == 0) {
-      init_dance_scene();
-      game_scene = DANCE_SCENE;
+      game_scene = SETTING;
     } else if (main_menu_index == 1) {
       game_scene = HELP;
     } else if (main_menu_index == 2)  {
@@ -377,16 +417,16 @@ void display_bpm_bar() {
   uint8_t beat_bar_width = 6;
 
   if (current_beat >= 32 && current_beat <= 36)   // 32 Beat
-    beat_bar_width = 8;
+    beat_bar_width = 10;
 
   if (current_beat >= 64 && current_beat <= 68)   // 64 Beat
-    beat_bar_width = 8;
+    beat_bar_width = 10;
   
   if (current_beat >= 96 && current_beat <= 100)   // 96 Beat
-    beat_bar_width = 12;
+    beat_bar_width = 16;
 
   if (current_beat >= 0 && current_beat <= 4)   // 128 Beat
-    beat_bar_width = 8;
+    beat_bar_width = 10;
 
   arduboy.fillRect(96 - (beat_bar_width / 2), 54, beat_bar_width, 3, WHITE);
   arduboy.fillRect(0, 60, current_beat, 4, WHITE);
@@ -414,12 +454,26 @@ void show_accuracy() {
   }
 }
 
+void show_score_beat() {
+  // arduboy.fillRect(0, 0, 32, 20, BLACK);
+  
+  arduboy.drawBitmap(-2, 0, score_icon, 16, 8, WHITE);
+  arduboy.setCursor(16, 0);
+  if (current_score < target_score)
+    current_score++;
+  arduboy.print(current_score);
+
+  arduboy.drawBitmap(-2, 10, beat_icon, 16, 8, WHITE);
+  arduboy.setCursor(16, 10);
+  arduboy.print((maximum_play - current_play));
+}
+
 void dance_scene() {
   generate_puzzle();
   display_puzzle();
   display_bpm_bar();
 
-  if (arduboy.justPressed(B_BUTTON) && show_puzzle) {
+  if ((arduboy.justPressed(A_BUTTON) + arduboy.justPressed(B_BUTTON)) && show_puzzle) {
     // Scoring
     if (index_player_tap == current_level) {
       if (current_beat >= 94 && current_beat <= 98) {         // PERFECT!
@@ -468,20 +522,14 @@ void dance_scene() {
   if (arduboy.justPressed(DOWN_BUTTON))
     do_tap(3);
 
-  arduboy.setCursor(0, 0);
-  if (current_score < target_score)
-    current_score++;
-  arduboy.print(current_score);
-
-  arduboy.setCursor(0, 10);
-  arduboy.print((maximum_play - current_play));
-
   if (maximum_play - current_play == 1)
     show_puzzle = false;
 
   dance_animation();
+  show_score_beat();
 
   if (current_play >= maximum_play) {
+    arduboy.setFrameRate(DEFAULT_FRAME_RATE);
     delay(1000);
     game_scene = GAME_OVER;
   }

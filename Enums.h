@@ -8,6 +8,7 @@
 #define GAME_OVER             3
 #define CREDIT_SCENE          4
 #define HELP                  5
+#define SETTING               6
 
 // Accuracy
 #define NO_ACCURACY           -1
@@ -15,5 +16,8 @@
 #define GOOD                  1
 #define BAD                   2
 #define MISS                  3
+
+// Default Value
+#define DEFAULT_FRAME_RATE    24
 
 #endif
