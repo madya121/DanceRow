@@ -1,9 +1,9 @@
 # DanceRow
 An Audition Ayodance clone for Arduboy. With your arrow keypad, match the arrow on the screen. Then, on the correct beat, press (A) / (B) to get a score. Once you beat that beat, you'll get one of these four results based on how close with the correct beat:
 
-* **Perfect** : You'll get 3 times how many arrow(s) on the screen
-* **Good** : You'll get 2 times how many arrow(s) on the screen
-* **Bad** : You'll get 1 times how many arrow(s) on the screen
+* **Perfect** : You'll get 3 points times how many arrow(s) on the screen
+* **Good** : You'll get 2 points times how many arrow(s) on the screen
+* **Bad** : You'll get 1 point times how many arrow(s) on the screen
 * **Miss** : You'll get nothing
 
 
