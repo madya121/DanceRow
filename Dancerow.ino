@@ -1,4 +1,5 @@
 #include <Arduboy2.h>
+#include <ArduboyTones.h>
 
 #include "Enums.h"
 
@@ -7,18 +8,28 @@
 #include "Images_Main_Menu.h"
 #include "Images_Game_Over.h"
 
+#include "music.h"
+
 using namespace std;
 
 // make an instance of arduboy used for many functions
 Arduboy2 arduboy;
+ArduboyTones sound(arduboy.audio.enabled);
 
 uint8_t game_scene = MAIN_MENU;
 uint8_t frame = 0;
+
+// Music
+uint16_t music_key_frame = 0;
+uint8_t music_index = 0;
 
 // Main menu global variables
 uint8_t main_menu_animation_key_frame = 0;
 uint8_t main_menu_index = 0;
 uint8_t select_frame_rate = DEFAULT_FRAME_RATE;
+bool active_sound = true;
+bool active_led = true;
+uint8_t setting_index = 0;
 
 // Dance scene global variables
 uint8_t current_level = 1;
@@ -35,8 +46,10 @@ uint16_t target_score = 0;
 uint8_t last_accuracy = -1;
 uint8_t max_level = 0;
 uint16_t animation_key_frame = 0;
-uint8_t maximum_play = 50;
+uint8_t maximum_play = 46;
 uint8_t perfect = 0, good = 0, bad = 0, miss = 0;
+bool led_state = false;
+uint8_t led_count = 0;
 
 // This function runs once in your game.
 // use it for anything that needs to be set only once in your game.
@@ -104,25 +117,57 @@ void loop() {
 //==================================================================================================//
 
 void draw_setting_menu() {
-  arduboy.setCursor(5, 20);
+  arduboy.setCursor(5, 0);
   arduboy.print("Speed");
 
-  arduboy.setCursor(15, 30);
+  arduboy.setCursor(15, 10);
   arduboy.print(select_frame_rate);
 
-  arduboy.drawBitmap(0, 30, left_indicator, 8, 8, WHITE);
-  arduboy.drawBitmap(31, 30, right_indicator, 8, 8, WHITE);
+  arduboy.setCursor(5, 22);
+  arduboy.print("Sound");
+
+  arduboy.setCursor(9 + ((active_sound) ? 0 : 3), 32);
+  arduboy.print((active_sound) ? " On" : "Off");
+
+  arduboy.setCursor(7, 45);
+  arduboy.print(" LED");
+
+  arduboy.setCursor(9 + ((active_led) ? 0 : 3), 55);
+  arduboy.print((active_led) ? " On" : "Off");
+
+  arduboy.drawBitmap(0, 10 + (setting_index * 22) + (setting_index == 2 ? 1 : 0), left_indicator, 8, 8, WHITE);
+  arduboy.drawBitmap(31, 10 + (setting_index * 22) + (setting_index == 2 ? 1 : 0), right_indicator, 8, 8, WHITE);
+
+  if (arduboy.justPressed(UP_BUTTON)) {
+    setting_index = ((setting_index - 1) + 3) % 3;
+  }
+
+  if (arduboy.justPressed(DOWN_BUTTON)) {
+    setting_index = (setting_index + 1) % 3;
+  }
 
   if (arduboy.justPressed(LEFT_BUTTON)) {
-    select_frame_rate -= 4;
-    if (select_frame_rate < 20)
-      select_frame_rate = 36;
+    if (setting_index == 0) {
+      select_frame_rate -= 4;
+      if (select_frame_rate < 20)
+        select_frame_rate = 36;
+    } else if (setting_index == 1) {
+      active_sound ^= true;
+    } else {
+      active_led ^= true;
+    }
   }
 
   if (arduboy.justPressed(RIGHT_BUTTON)) {
-    select_frame_rate += 4;
-    if (select_frame_rate > 36)
-      select_frame_rate = 20;
+    if (setting_index == 0) {
+      select_frame_rate += 4;
+      if (select_frame_rate > 36)
+        select_frame_rate = 20;
+    } else if (setting_index == 1) {
+      active_sound ^= true;
+    } else {
+      active_led ^= true;
+    }
   }
 
   if (arduboy.justPressed(A_BUTTON)) {
@@ -298,8 +343,28 @@ void init_dance_scene() {
   last_accuracy = -1;
   max_level = 0;
   animation_key_frame = 0;
-  maximum_play = 50;
+  maximum_play = 46;
   perfect = 0, good = 0, bad = 0, miss = 0;
+
+  music_key_frame = 0;
+  music_index = 0;
+
+  led_state = false;
+  led_count = 0;
+
+  // sound.tones(scale);
+}
+
+void play_bgm() {
+  if (!active_sound)
+    return;
+  
+  if ((music_data[NOTE_BUFFER * music_index] != END_SONG) && music_key_frame >= (music_data[music_index]* 16)) {
+    sound.tone(frec_map[music_chord[music_index]], ((get_music_duration(music_index) * 125) / select_frame_rate) * 64);
+    music_index++;
+  }
+  
+  music_key_frame += 2;
 }
 
 void dance_animation() {
@@ -404,6 +469,7 @@ void display_bpm_bar() {
         current_level = 1;
         max_level = 0;
         miss++;
+        led_count = 16;
       }
       
       show_puzzle = false;
@@ -472,6 +538,51 @@ void show_score_beat() {
   arduboy.print((maximum_play - current_play));
 }
 
+void show_led() {
+  if (!active_led)
+    return;
+
+  if (led_count == 0) {
+    if (led_state) {
+      arduboy.digitalWriteRGB(RGB_OFF, RGB_OFF, RGB_OFF);
+      led_state = false;
+    }
+    return;
+  }
+  
+  switch (last_accuracy) {
+    case PERFECT:
+      if (!led_state) {
+        arduboy.digitalWriteRGB(RGB_ON, RGB_ON, RGB_ON);
+        led_state = true;
+      }
+      break;
+
+    case GOOD:
+      if (!led_state) {
+        arduboy.digitalWriteRGB(RGB_OFF, RGB_ON, RGB_OFF);
+        led_state = true;
+      }
+      break;
+
+    case BAD:
+      if (!led_state) {
+        arduboy.digitalWriteRGB(RGB_OFF, RGB_OFF, RGB_ON);
+        led_state = true;
+      }
+      break;
+
+    case MISS:
+      if (!led_state) {
+        arduboy.digitalWriteRGB(RGB_ON, RGB_OFF, RGB_OFF);
+        led_state = true;
+      }
+      break;
+  }
+
+  led_count--;
+}
+
 void dance_scene() {
   generate_puzzle();
   display_puzzle();
@@ -484,25 +595,30 @@ void dance_scene() {
         target_score += 3 * current_level;
         last_accuracy = PERFECT;
         perfect++;
+        led_count = 16;
       } else if (current_beat >= 90 && current_beat <= 102) { // GOOD!
         target_score += 2 * current_level;
         last_accuracy = GOOD;
         good++;
+        led_count = 16;
       } else if (current_beat >= 86 && current_beat <= 106) { // BAD!
         target_score += 1 * current_level;
         last_accuracy = BAD;
         bad++;
+        led_count = 16;
       } else {                                                // MISS
         last_accuracy = MISS;
         current_level = 0;
         max_level = 0;
         miss++;
+        led_count = 16;
       }
     } else {
       last_accuracy = MISS;
       current_level = 0;
       max_level = 0;
       miss++;
+      led_count = 16;
     }
 
     show_puzzle = false;
@@ -531,6 +647,8 @@ void dance_scene() {
 
   dance_animation();
   show_score_beat();
+  play_bgm();
+  show_led();
 
   if (current_play >= maximum_play) {
     arduboy.setFrameRate(DEFAULT_FRAME_RATE);
