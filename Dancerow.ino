@@ -360,7 +360,7 @@ void play_bgm() {
     return;
   
   if ((music_data[NOTE_BUFFER * music_index] != END_SONG) && music_key_frame >= (music_data[music_index]* 16)) {
-    sound.tone(frec_map[music_chord[music_index]], ((get_music_duration(music_index) * 125) / select_frame_rate) * 64);
+    sound.tone(frec_map[music_chord[music_index]], ((get_music_duration(music_index) * 125) / (select_frame_rate - 1)) * 64);
     music_index++;
   }
   
