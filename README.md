@@ -12,7 +12,7 @@ An Audition Ayodance clone for Arduboy. With your arrow keypad, match the arrow 
 
 
 ### How To Play?
-1. Select your speed. We have 5 different speeds [20, 24,28, 32, 26]
+1. Select your speed. We have 5 different speeds [20, 24, 28, 32, 36]
 2. Type the arrow
 3. On the correct beat, press (A) / (B)
 
